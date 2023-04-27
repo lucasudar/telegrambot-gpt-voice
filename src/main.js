@@ -5,25 +5,32 @@ import config from "config"
 import {ogg} from "./ogg.js"
 import {openai} from "./openai.js";
 
-console.log(config.get("ENV"))
-
 const INITIAL_SESSION = {
   messages: []
 }
 
 const bot = new Telegraf(config.get("TELEGRAM_TOKEN"))
 
-bot.use(session())
+const checkAuthorization = async (ctx, next) => {
+  if (config.get("AUTHORISED_USERS").includes(ctx.from.id)) {
+    await next()
+  } else {
+    await ctx.reply(code('You are not authorized to use this bot.'))
+  }
+}
 
-bot.command('new', async (ctx) => {
-  ctx.session = INITIAL_SESSION
-  await ctx.reply('Send me a voice message or text message')
-})
+bot.use(session())
+bot.use(checkAuthorization)
 
 bot.command('start', async (ctx) => {
-  ctx.session = INITIAL_SESSION
+  ctx.session = {messages: []}
   await ctx.reply(`${ctx.from.username}, welcome to the GPT Voice Bot!`)
-  await ctx.reply('Send me a voice message or text message')
+  await ctx.reply(code('Send me a voice message or text message'))
+})
+
+bot.command('new', async (ctx) => {
+  ctx.session = {messages: []}
+  await ctx.reply(code('Send me a voice message or text message'))
 })
 
 bot.on(message('voice'), async (ctx) => {
